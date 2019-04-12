@@ -7,16 +7,24 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       gyroscopeData: {},
+      wsReady: false,
     };
-    this.ws = new WebSocket("wss://localhost:8765");
+    this.ws = new WebSocket("ws://930b299f.ngrok.io");
+
+    this.ws.onopen = () => {
+      console.log("Websocket open!");
+      this.setState({ wsReady: true });
+    }
   }
 
   componentDidMount() {
-    Gyroscope.setUpdateInterval(16);
+    Gyroscope.setUpdateInterval(1000);
     this._subscription = Gyroscope.addListener(result => {
       this.setState({ gyroscopeData: result });
-      console.log(result);
-      this.ws.send(result);
+      if (this.state.wsReady) {
+        console.log("Sending to server!", result);
+        this.ws.send(JSON.stringify(result));
+      }
     });
   }
 
@@ -25,7 +33,6 @@ export default class App extends React.Component {
 
     return (
       <View style={styles.container}>
-        <Text>Open up App.js to start working on your app!</Text>
         <Text>
           x: {round(x)} y: {round(y)} z: {round(z)}
         </Text>
