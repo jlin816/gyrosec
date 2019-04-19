@@ -1,21 +1,35 @@
 import asyncio
 import websockets
+from pyqtgraph.Qt import QtGui, QtCore
+import pyqtgraph as pg
+import numpy as np
+import json
 
-class SensorDataServer:
-    def __init__(self):
-        self.sensor_data = []
+windowWidth = 500
+async def hello(websocket, path):
+    ptr = 0
+    acc_data = np.zeros((windowWidth,))
+    gyro_data = np.zeros((windowWidth,4))
+    plot = QtGui.QApplication([])
+    win = pg.GraphicsWindow()
 
-    async def hello(self, websocket, path):
-        while True:
-            data = await websocket.recv()
-            print(f"< {data}")
+    acc_plot = win.addPlot(title="Accelerometer Data")
+    # Create an empty plot
+    acc_curve = acc_plot.plot()
 
-        #response = f"Received {data}!"
-        #await websocket.send(response)
-        #print(f"> {response}")
+
+    while True:
+        data = await websocket.recv()
+        print(f"< {data}")
+        data = json.loads(data)
+        acc_data[:-1] = acc_data[1:]
+        acc_data[-1] = float(data["x"])
+        ptr += 1
+        acc_curve.setData(acc_data)
+        acc_curve.setPos(ptr, 0)
+        QtGui.QApplication.processEvents()
 
 print("starting server")
-server = SensorDataServer()
-start_server = websockets.serve(server.hello, "localhost", 8765)
+start_server = websockets.serve(hello, "localhost", 8765)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
