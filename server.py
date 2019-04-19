@@ -6,7 +6,13 @@ import numpy as np
 import json
 
 windowWidth = 500
+
 async def hello(websocket, path):
+    while True:
+        data = await websocket.recv()
+        print(f"< {data}")
+
+async def plot_live(websocket, path):
     ptr = 0
     acc_data = np.zeros((windowWidth,))
     gyro_data = np.zeros((windowWidth,4))

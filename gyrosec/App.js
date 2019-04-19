@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { TouchableWithoutFeedback, Image, StyleSheet, Text, View } from 'react-native';
 import { Gyroscope, Accelerometer } from 'expo';
 
 export default class App extends React.Component {
@@ -19,7 +19,6 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-    const startTime = Date.now();
     Gyroscope.setUpdateInterval(16);
     Gyroscope.addListener(result => {
       this.setState({ gyroscopeData: result });
@@ -29,16 +28,27 @@ export default class App extends React.Component {
       }
     });
 
-    Accelerometer.setUpdateInterval(500);
+    Accelerometer.setUpdateInterval(16);
     Accelerometer.addListener(result => {
       this.setState({ accData: result });
       if (this.state.wsReady) {
-        result["time"] = Date.now() - startTime;
-        console.log(result);
-        this.ws.send(JSON.stringify(result));
+        // console.log(result);
+        this.ws.send(JSON.stringify({
+          "event": "accelerometer",
+          "data": result,
+          "time": Date.now()
+        }));
       }
     });
+  }
 
+  sendEvent(eventName, evt) {
+    if (!this.state.wsReady) return;
+    this.ws.send(JSON.stringify({
+      "event": eventName,
+      "location": (evt.nativeEvent.locationX, evt.nativeEvent.locationY),
+      "time": Date.now()
+    }));
   }
 
   render() {
@@ -46,13 +56,14 @@ export default class App extends React.Component {
 
     return (
       <View style={styles.container}>
-        <Image
-          source={require('./passcode.png')}
-          style={{width: '100%', height: '100%'}}
-        />
-        <Text>
-          x: {round(x)} y: {round(y)} z: {round(z)}
-        </Text>
+        <TouchableWithoutFeedback style={{ width: '100%', height: '100%' }}
+          onPressIn={(evt) => this.sendEvent("press", evt)}
+          onPressOut={(evt) => this.sendEvent("release", evt)}>
+          <Image
+            source={require('./passcode.png')}
+            style={{width: '100%', height: '100%'}}
+          />
+        </TouchableWithoutFeedback>
       </View>
     );
   }
