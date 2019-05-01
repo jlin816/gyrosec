@@ -28,14 +28,16 @@ async def plot_live(websocket, path):
         data = await websocket.recv()
         print(f"< {data}")
         data = json.loads(data)
-        acc_data[:-1] = acc_data[1:]
-        acc_data[-1] = float(data["x"])
-        ptr += 1
-        acc_curve.setData(acc_data)
-        acc_curve.setPos(ptr, 0)
-        QtGui.QApplication.processEvents()
+        if data["event"] == "accelerometer":
+            data = data["data"]
+            acc_data[:-1] = acc_data[1:]
+            acc_data[-1] = float(data["x"])
+            ptr += 1
+            acc_curve.setData(acc_data)
+            acc_curve.setPos(ptr, 0)
+            QtGui.QApplication.processEvents()
 
 print("starting server")
-start_server = websockets.serve(hello, "localhost", 8765)
+start_server = websockets.serve(plot_live, "localhost", 8765)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
