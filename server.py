@@ -73,12 +73,14 @@ async def plot_live(websocket, path):
         data = await websocket.recv()
         print(f"< {data}")
         data = json.loads(data)
-        acc_data[:-1] = acc_data[1:]
-        acc_data[-1] = float(data["x"])
-        ptr += 1
-        acc_curve.setData(acc_data)
-        acc_curve.setPos(ptr, 0)
-        QtGui.QApplication.processEvents()
+        if data["event"] == "accelerometer":
+            data = data["data"]
+            acc_data[:-1] = acc_data[1:]
+            acc_data[-1] = float(data["x"])
+            ptr += 1
+            acc_curve.setData(acc_data)
+            acc_curve.setPos(ptr, 0)
+            QtGui.QApplication.processEvents()
 
 print("starting server")
 with open('dataPixelRHandStandingRandomShortPressesFourCornerOnly.csv', mode='w') as data_file:
