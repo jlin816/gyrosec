@@ -10,7 +10,7 @@ export default class App extends React.Component {
       accData: {},
       wsReady: false,
     };
-    this.ws = new WebSocket("ws://930b299f.ngrok.io");
+    this.ws = new WebSocket("ws://52538153.ngrok.io");
 
     this.ws.onopen = () => {
       console.log("Websocket open!");
@@ -24,7 +24,11 @@ export default class App extends React.Component {
       this.setState({ gyroscopeData: result });
       if (this.state.wsReady) {
         //console.log("Sending to server!", result);
-        //this.ws.send(JSON.stringify(result));
+        this.ws.send(JSON.stringify({
+          "event": "gyroscope",
+          "data": result,
+          "time": Date.now()
+        }));
       }
     });
 
@@ -46,7 +50,8 @@ export default class App extends React.Component {
     if (!this.state.wsReady) return;
     this.ws.send(JSON.stringify({
       "event": eventName,
-      "location": (evt.nativeEvent.locationX, evt.nativeEvent.locationY),
+      "locationX": evt.nativeEvent.locationX,
+      "locationY": evt.nativeEvent.locationY,
       "time": Date.now()
     }));
   }

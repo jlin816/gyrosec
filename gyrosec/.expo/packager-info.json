@@ -2,8 +2,8 @@
   "devToolsPort": 19002,
   "expoServerPort": 19000,
   "packagerPort": 19001,
-  "packagerPid": 58328,
-  "expoServerNgrokUrl": "https://fh-uca.feedgoodhealth.gyrosec.exp.direct",
-  "packagerNgrokUrl": "https://packager.fh-uca.feedgoodhealth.gyrosec.exp.direct",
-  "ngrokPid": 58349
+  "packagerPid": 77683,
+  "expoServerNgrokUrl": "https://qa-m2r.feedgoodhealth.gyrosec.exp.direct",
+  "packagerNgrokUrl": "https://packager.qa-m2r.feedgoodhealth.gyrosec.exp.direct",
+  "ngrokPid": 77705
 }

@@ -4,13 +4,58 @@ from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 import json
+import csv
+
+import signal
+import sys
+
 
 windowWidth = 500
 
 async def hello(websocket, path):
+    pressed = False
+    locationX = -2
+    locationY = -2
     while True:
         data = await websocket.recv()
-        print(f"< {data}")
+        # print(data)
+        # if "press" in data:
+        #     # print("oh boiiiiiiiiiiii")
+        #     print(f"< {data}")
+        # print(f"< {data}")
+        # print(type(data))
+        def pressedX():
+            if not pressed:
+                return -2.0
+            else:
+                return locationX
+        def pressedY():
+            if not pressed:
+                return -2.0
+            else:
+                return locationY
+
+        dataObj = json.loads(data)
+        if dataObj["event"] == "accelerometer":
+            #write
+            data_writer.writerow([pressedX(), pressedY(), dataObj["event"], dataObj["time"], dataObj["data"]["x"], dataObj["data"]["y"], dataObj["data"]["z"]])
+        elif dataObj["event"] == "press":
+            #writee
+            pressed=True
+            locationY=dataObj["locationY"]
+            locationX=dataObj["locationX"]
+            data_writer.writerow([pressedX(), pressedY(), dataObj["event"], dataObj["time"], -2, -2, -2])
+        elif dataObj["event"] == "gyroscope":
+            #writee
+            data_writer.writerow([pressedX(), pressedY(), dataObj["event"], dataObj["time"], dataObj["data"]["x"], dataObj["data"]["y"], dataObj["data"]["z"]])
+        elif dataObj["event"] == "release":
+            #writee
+            pressed=False
+            locationY=-2
+            locationX=-2
+            data_writer.writerow([pressedX(), pressedY(), dataObj["event"], dataObj["time"], -2, -2, -2])
+        # data_writer.writerow([])
+        print("data boiiiis")
 
 async def plot_live(websocket, path):
     ptr = 0
@@ -36,6 +81,13 @@ async def plot_live(websocket, path):
         QtGui.QApplication.processEvents()
 
 print("starting server")
-start_server = websockets.serve(hello, "localhost", 8765)
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+with open('dataPixelRHandStandingRandomShortPressesFourCornerOnly.csv', mode='w') as data_file:
+    def signal_handler(sig, frame):
+            print('You pressed Ctrl+C!, saving csv!')
+            data_file.close()
+            sys.exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    start_server = websockets.serve(hello, "localhost", 8765)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
