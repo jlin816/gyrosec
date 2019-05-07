@@ -193,5 +193,7 @@ def main():
     visualize_windows(dataset, sensor_data, has_touch, "touch")
     visualize_windows(dataset, sensor_data, has_touch, "no_touch")
 
+    save(sensor_data, has_touch, touch_loc, dataset)
+
 if __name__ == "__main__":
     main()

@@ -38,7 +38,9 @@ def balance_classes(X, has_touch_y):
 
 if __name__ == "__main__":
     all_datasets = ["dataPixelRHandStandingRandomShortPressesSpacedOut2",
-            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
+            "dataPixelRHandStandingRandomShortPressesSpacedOut",
+            "dataPixelRHandStandingRandomShortPressesFaster3",
+            "dataPixelRHandStandingRandomShortPressesFaster4"]
 #    skf = StratifiedKFold(n_splits = 5)
 
     X = []
@@ -66,5 +68,5 @@ if __name__ == "__main__":
 
     X_balanced, y_balanced = balance_classes(X, has_touch_y)
 
-    np.save("processed/balanced_combined_X", X_balanced)
-    np.save("processed/balanced_combined_has_touch_y", y_balanced)
+    np.save("processed/balanced_combinedfast_X", X_balanced)
+    np.save("processed/balanced_combinedfast_has_touch_y", y_balanced)
