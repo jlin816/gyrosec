@@ -8,8 +8,10 @@
   },
   "dependencies": {
     "expo": "^32.0.0",
+    "expokit": "32.1.1",
     "react": "16.5.0",
-    "react-native": "https://github.com/expo/react-native/archive/sdk-32.0.0.tar.gz"
+    "react-native": "https://github.com/expo/react-native/archive/sdk-32.0.0.tar.gz",
+    "react-native-background-timer": "^2.1.1"
   },
   "devDependencies": {
     "babel-preset-expo": "^5.0.0"
