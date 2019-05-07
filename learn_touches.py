@@ -20,17 +20,17 @@ def build_model():
 def balance_classes(X, has_touch_y):
     X_with_touch = X[has_touch_y == 1]
     print(X_with_touch.shape)
-    print(has_touch_y == -1)
-    X_no_touch = X[has_touch_y == -1][:len(X_with_touch)]
+    print(has_touch_y == 0)
+    X_no_touch = X[has_touch_y == 0][:len(X_with_touch)]
 
     has_touch_y_with_touch = has_touch_y[has_touch_y == 1]
-    has_touch_y_no_touch = has_touch_y[has_touch_y == -1][:len(X_with_touch)]
+    has_touch_y_no_touch = has_touch_y[has_touch_y == 0][:len(X_with_touch)]
 
     X_balanced = np.concatenate([X_with_touch, X_no_touch])
     has_touch_y_balanced = np.concatenate([has_touch_y_with_touch, has_touch_y_no_touch])
 
     print("Number touch:", np.sum(has_touch_y_balanced == 1))
-    print("Number no touch:", np.sum(has_touch_y_balanced == -1))
+    print("Number no touch:", np.sum(has_touch_y_balanced == 0))
 
     visualize_windows("balanced_combined", X_balanced, has_touch_y_balanced, "touch")
     visualize_windows("balanced_combined", X_balanced, has_touch_y_balanced, "no_touch")
@@ -38,9 +38,9 @@ def balance_classes(X, has_touch_y):
 
 if __name__ == "__main__":
     all_datasets = ["dataPixelRHandStandingRandomShortPressesSpacedOut2",
-            "dataPixelRHandStandingRandomShortPressesSpacedOut",
-            "dataPixelRHandStandingRandomShortPressesFaster3",
-            "dataPixelRHandStandingRandomShortPressesFaster4"]
+            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
+    #        "dataPixelRHandStandingRandomShortPressesFaster3",
+    #        "dataPixelRHandStandingRandomShortPressesFaster4"]
 #    skf = StratifiedKFold(n_splits = 5)
 
     X = []
@@ -61,12 +61,17 @@ if __name__ == "__main__":
     print(touch_loc_y.shape)
 
     print("Number touch:", np.sum(has_touch_y == 1))
-    print("Number no touch:", np.sum(has_touch_y == -1))
+    print("Number no touch:", np.sum(has_touch_y == 0))
 
     visualize_windows("combined", X, has_touch_y, "touch")
     visualize_windows("combined", X, has_touch_y, "no_touch")
 
+    np.save("processed/combined_X", X)
+    np.save("processed/combined_has_touch_y", has_touch_y)
+    np.save("processed/combined_touch_loc_y", touch_loc_y)
+
     X_balanced, y_balanced = balance_classes(X, has_touch_y)
 
-    np.save("processed/balanced_combinedfast_X", X_balanced)
-    np.save("processed/balanced_combinedfast_has_touch_y", y_balanced)
+    np.save("processed/balanced_combined_X", X)
+    np.save("processed/balanced_combined_has_touch_y", has_touch_y)
+    np.save("processed/balanced_combined_touch_loc_y", touch_loc_y)

@@ -9,10 +9,9 @@ import sys
 window_size_ms = 200.
 samples_per_window = 20
 
-
 # n = number of windows
 # `all_data`: (n, samples_per_window, 6) data (acc_x,acc_y,acc_z, gyro_x, gyro_y, gyro_z)
-# `has_touch`: (n,) array of +/-1 (bool for whether touch occured in this window)
+# `has_touch`: (n,) array of 1/0 (bool for whether touch occured in this window)
 # `touch_loc`: (n,2) array of (x,y) touch locations
 # All times are adjusted so the first time in the dataset is 0.
 
@@ -31,12 +30,32 @@ def load_dataset(dataset):
     return csvf
 
 def normalize(arr):
-    """Normalizes to [-1, 1]."""
+    """Normalizes data to [0, 1]."""
     arr_min = np.min(arr, axis=0)
     arr_range = np.ptp(arr, axis=0)
     print("Min: ", arr_min)
     print("Range: ", arr_range)
-    return (2.*(arr - arr_min) / arr_range) - 1
+    print("lol?")
+    return (arr - arr_min) / arr_range
+
+def interp_xyz(interp_times, data_times, data):
+    """Interpolates sensor data across time.
+    Args:
+        interp_times: (T,) times to evaluate interpolated data
+        data_times: (n,) times we have sampled
+        data: (n, 3) (x,y,z) sensor data for each time.
+    Returns:
+        (T, 3) interpolated (x,y,z) sensor data
+    """ 
+    assert(len(data_times) == len(data))
+    # Check sampled times are increasing
+    assert(np.all(np.diff(data_times) > 0))
+    data_interp = [
+        np.interp(interp_times, data_times, data[:,0]),
+        np.interp(interp_times, data_times, data[:,1]),
+        np.interp(interp_times, data_times, data[:,2]),
+    ]
+    return data_interp
 
 def preprocess_sensor_data(csvf):
     """Filters into acc/gyro, interpolates data according to `samples_per_window`, and returns data in windows.
@@ -67,30 +86,38 @@ def preprocess_sensor_data(csvf):
 
     # Interpolate
     interp_times = np.linspace(0, end_time, num=num_samples)
-
-    acc_data_ts = acc_data[:,0]
-    # Check times all increasing
-    assert(np.all(np.diff(acc_data_ts) > 0))
-    acc_data_interp = [
-        np.interp(interp_times, acc_data_ts, acc_data[:,1]),
-        np.interp(interp_times, acc_data_ts, acc_data[:,2]),
-        np.interp(interp_times, acc_data_ts, acc_data[:,3]),
-    ]
-
-    gyro_data_ts = gyro_data[:,0]
-    assert(np.all(np.diff(gyro_data_ts) > 0))
-    gyro_data_interp = [
-        np.interp(interp_times, gyro_data_ts, gyro_data[:,1]),
-        np.interp(interp_times, gyro_data_ts, gyro_data[:,2]),
-        np.interp(interp_times, gyro_data_ts, gyro_data[:,3]),
-    ]
+    acc_data_interp = interp_xyz(interp_times, acc_data[:,0], acc_data[:,1:])
+    gyro_data_interp = interp_xyz(interp_times, gyro_data[:,0], gyro_data[:,1:])
 
     all_data = np.concatenate((acc_data_interp, gyro_data_interp), axis=0).T
     assert(all_data.shape == (num_samples, 6))
+
     all_data = np.array(np.split(all_data, num_windows))
     assert(all_data.shape == (num_windows, samples_per_window, 6))
+
     print("Done.")
     return all_data
+
+def preprocess_presses(csvf, num_windows):
+    """Constructs labels for dataset. `has_touch`=1 if there is a touch ONSET in a window."""
+
+    start_time = int(csvf[0][3])
+
+    # (# presses, 3) array of (window #, touch_x, touch_y)
+    press_locs = np.array([[
+        int(math.floor((int(x[3]) - start_time) / window_size_ms)), float(x[0]), float(x[1])
+    ] for x in csvf if x[2] == "press"])
+
+    has_touch = np.zeros((num_windows,))
+    touch_loc = -2 * np.ones((num_windows, 2))
+
+    has_touch[press_locs[:,0].astype(int)] = 1
+    touch_loc[press_locs[:,0].astype(int)] = press_locs[:,1:]
+
+    print("Number touch windows", np.sum(has_touch == 1))
+    print("Number no touch windows", np.sum(has_touch == 0))
+
+    return has_touch, touch_loc
 
 def visualize_with_presses(csvf, xyz_data, num_samples_to_view = 1500):
     """Visualizes sensor data with presses highlighted.
@@ -118,41 +145,18 @@ def visualize_with_presses(csvf, xyz_data, num_samples_to_view = 1500):
     plt.xticks(np.arange(0, plot_end_time, step=window_size_ms))
     plt.show()
 
-def preprocess_presses(csvf, num_windows):
-    # has_touch = 1 if there is a touch ONSET in that window
-    # TODO: might want to test this assumption
-
-    start_time = int(csvf[0][3])
-
-    # (# presses, 3) array of (window #, touch_x, touch_y)
-    press_locs = np.array([[
-        int(math.floor((int(x[3]) - start_time) / window_size_ms)), float(x[0]), float(x[1])
-    ] for x in csvf if x[2] == "press"])
-
-    has_touch = -1 * np.ones((num_windows,))
-    touch_loc = -2 * np.ones((num_windows, 2))
-
-    has_touch[press_locs[:,0].astype(int)] = 1
-    touch_loc[press_locs[:,0].astype(int)] = press_locs[:,1:]
-    touch_loc = normalize(touch_loc)
-
-    print("Number touch windows", np.sum(has_touch == 1))
-    print("Number no touch windows", np.sum(has_touch == -1))
-
-    return has_touch, touch_loc
-
 def visualize_windows(dataset, sensor_data_x, has_touch_y, window_type, nrows=5, ncols=5):
     """Visualize touch / no touch windows separately.
     Args:
         sensor_data_x: (# windows, samples_per_window * 6) np array of sensor data
-        has_touch_y: (# windows,) np array of 1 (touch) or -1 (no touch) for each window
+        has_touch_y: (# windows,) np array of 1 (touch) or 0 (no touch) for each window
         window_type: "touch" or "no_touch" which windows to visualize
     """
     sensor_data_x = sensor_data_x.reshape((-1, samples_per_window, 6))
 
     fig, axes = plt.subplots(nrows, ncols, figsize=(15, 15))
     axes = axes.reshape(-1)
-    window_type_val = 1 if window_type == "touch" else -1
+    window_type_val = 1 if window_type == "touch" else 0
 
     count = 0
     for i in range(50, len(has_touch_y)):
@@ -161,7 +165,7 @@ def visualize_windows(dataset, sensor_data_x, has_touch_y, window_type, nrows=5,
             axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,0])
             axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,1])
             axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,2])
-            axes[count].set_ylim(-1, 1)
+            axes[count].set_ylim(0, 1)
             count += 1
             
     fig.suptitle(dataset + ": " + window_type)
