@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import numpy as np
 import json
 import csv
+from collections import deque
 
 import signal
 import sys
@@ -18,12 +19,6 @@ async def hello(websocket, path):
     locationY = -2
     while True:
         data = await websocket.recv()
-        # print(data)
-        # if "press" in data:
-        #     # print("oh boiiiiiiiiiiii")
-        #     print(f"< {data}")
-        # print(f"< {data}")
-        # print(type(data))
         def pressedX():
             if not pressed:
                 return -2.0
@@ -82,14 +77,60 @@ async def plot_live(websocket, path):
             acc_curve.setPos(ptr, 0)
             QtGui.QApplication.processEvents()
 
-print("starting server")
-with open('dataPixelRHandStandingRandomShortPressesFourCornerOnly.csv', mode='w') as data_file:
-    def signal_handler(sig, frame):
-            print('You pressed Ctrl+C!, saving csv!')
-            data_file.close()
-            sys.exit(0)
-    signal.signal(signal.SIGINT, signal_handler)
-    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-    start_server = websockets.serve(hello, "localhost", 8765)
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
+async def predict_given_touch(websocket, path):
+    """Easier version of prediction task: given the ground-truth touch events, predict location"""
+    last_100ms = deque() 
+    collecting_press_data = False
+    press_start_time = -1
+    press_data = []
+    
+    while True:
+        data = await websocket.recv()
+        dataObj = json.loads(data)
+        # Remove old samples before the last 100ms
+        if len(last_100ms) > 0: 
+            while last_100ms[0]["time"] < dataObj["time"] - 100:
+                last_100ms.popleft()
+        # Add new samples
+        last_100ms.append(dataObj)
+
+        if dataObj["event"] == "press":
+            # Make sure we're not pressing too quickly / not done collecting previous press data
+            assert(not collecting_press_data)
+            collecting_press_data = True
+            press_start_time = dataObj["time"]
+            press_data = list(last_100ms) 
+        if collecting_press_data:
+            if dataObj["time"] > press_start_time + 100:
+                predict_touch_loc(press_data, press_start_time)
+                collecting_press_data = False
+                press_start_time = -1
+                press_data = []
+            else:
+                press_data.append(dataObj)
+
+def predict_touch_loc(press_data, press_start_time):
+    print(press_start_time)
+    print(press_data[0])
+    print(press_data[-1])
+    # Preprocess data then feed into NN
+    pass
+    
+if __name__ == "__main__":
+    mode = sys.argv[1] # "visualize", "collect_data", "predict_given_touch"
+    print("starting server")
+    if mode == "collect_data":
+        with open('dataPixelRHandStandingRandomShortPressesFourCornerOnly.csv', mode='w') as data_file:
+            def signal_handler(sig, frame):
+                    print('You pressed Ctrl+C!, saving csv!')
+                    data_file.close()
+                    sys.exit(0)
+            signal.signal(signal.SIGINT, signal_handler)
+            data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+            start_server = websockets.serve(hello, "localhost", 8765)
+            asyncio.get_event_loop().run_until_complete(start_server)
+            asyncio.get_event_loop().run_forever()
+    elif mode == "predict_given_touch":
+        start_server = websockets.serve(predict_given_touch, "localhost", 8765)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
