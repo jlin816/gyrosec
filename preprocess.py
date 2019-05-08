@@ -21,7 +21,7 @@ def load_dataset(dataset):
         touch_x, touch_y, sensor, t, x, y, z = row
     """
     print("Loading dataset...")
-    with open(dataset + ".csv") as f:
+    with open("data/" + dataset + ".csv") as f:
         csvreader = csv.reader(f)
         csvf = list(csvreader)
     print(csvf[0])
@@ -35,7 +35,6 @@ def normalize(arr):
     arr_range = np.ptp(arr, axis=0)
     print("Min: ", arr_min)
     print("Range: ", arr_range)
-    print("lol?")
     return (arr - arr_min) / arr_range
 
 def interp_xyz(interp_times, data_times, data):
@@ -69,13 +68,10 @@ def preprocess_sensor_data(csvf):
         int(x[3]) - start_time, float(x[4]), float(x[5]), float(x[6])
     ] for x in csvf if x[2] == "accelerometer"])
 
-    acc_data[:, 1:] = normalize(acc_data[:, 1:])
-
     gyro_data = np.array([[
         int(x[3]) - start_time, float(x[4]), float(x[5]), float(x[6])
     ] for x in csvf if x[2] == "gyroscope"])
 
-    gyro_data[:, 1:] = normalize(gyro_data[:, 1:])
 
     end_time = max(acc_data[-1][0], gyro_data[-1][0])
     num_windows = math.ceil((end_time / window_size_ms))
@@ -92,11 +88,8 @@ def preprocess_sensor_data(csvf):
     all_data = np.concatenate((acc_data_interp, gyro_data_interp), axis=0).T
     assert(all_data.shape == (num_samples, 6))
 
-    all_data = np.array(np.split(all_data, num_windows))
-    assert(all_data.shape == (num_windows, samples_per_window, 6))
-
     print("Done.")
-    return all_data
+    return all_data, num_windows
 
 def preprocess_presses(csvf, num_windows):
     """Constructs labels for dataset. `has_touch`=1 if there is a touch ONSET in a window."""
@@ -184,11 +177,9 @@ def save(sensor_data, has_touch, touch_loc, dataset):
     np.save("processed/{}_has_touch_y.npy".format(dataset), has_touch)
     np.save("processed/{}_touch_loc_y.npy".format(dataset), touch_loc)
 
-def main():
-    dataset = sys.argv[1]
+def preprocess_single_dataset(dataset):
     csvf = load_dataset(dataset)
-    sensor_data = preprocess_sensor_data(csvf) 
-    num_windows = len(sensor_data)
+    sensor_data, num_windows = preprocess_sensor_data(csvf) 
     has_touch, touch_loc = preprocess_presses(csvf, num_windows)
 
     assert(has_touch.shape == (num_windows,))
@@ -198,6 +189,77 @@ def main():
     visualize_windows(dataset, sensor_data, has_touch, "no_touch")
 
     save(sensor_data, has_touch, touch_loc, dataset)
+
+def normalize_sensor_data_over_windows(X):
+    X = X.reshape(-1, 6)
+    X_min = np.min(X, axis=0)
+    X_range = np.ptp(X, axis=0)
+    assert(X_min.shape == (6,))
+    assert(X_range.shape == (6,))
+    print("Min: ", X_min)
+    print("Range: ", X_range)
+    X = (X - X_min) / X_range
+    
+    # Split into windows
+    X = X.reshape((-1, samples_per_window, 6)), X_min, X_range
+    return X
+
+def balance_classes(X, has_touch_y):
+    X_with_touch = X[has_touch_y == 1]
+    print(X_with_touch.shape)
+    print(has_touch_y == 0)
+    X_no_touch = X[has_touch_y == 0][:len(X_with_touch)]
+
+    has_touch_y_with_touch = has_touch_y[has_touch_y == 1]
+    has_touch_y_no_touch = has_touch_y[has_touch_y == 0][:len(X_with_touch)]
+
+    X_balanced = np.concatenate([X_with_touch, X_no_touch])
+    has_touch_y_balanced = np.concatenate([has_touch_y_with_touch, has_touch_y_no_touch])
+
+    print("Number touch:", np.sum(has_touch_y_balanced == 1))
+    print("Number no touch:", np.sum(has_touch_y_balanced == 0))
+
+    return X_balanced, has_touch_y_balanced
+
+def main():
+    dsname = "spacedout1-2"
+    all_datasets = ["dataPixelRHandStandingRandomShortPressesSpacedOut2",
+            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
+
+    X = []
+    has_touch_y = []
+    touch_loc_y = []
+    for dataset in all_datasets:
+        preprocess_single_dataset(dataset)
+        X.append(np.load("processed/{}_x.npy".format(dataset)))
+        has_touch_y.append(np.load("processed/{}_has_touch_y.npy".format(dataset)))
+        touch_loc_y.append(np.load("processed/{}_touch_loc_y.npy".format(dataset)))
+
+    X = np.concatenate(X, axis=0)
+    has_touch_y = np.concatenate(has_touch_y, axis=0)
+    touch_loc_y = np.concatenate(touch_loc_y, axis=0)
+    assert(X.shape[1] == 120)
+
+    X, X_min, X_range = normalize_sensor_data_over_windows(X)
+    # Save stats so we can normalize inputs at test time
+    np.save("processed/%s_min_range" % dsname, [X_min, X_range])
+
+    print("Number touch:", np.sum(has_touch_y == 1))
+    print("Number no touch:", np.sum(has_touch_y == 0))
+
+    visualize_windows(dsname, X, has_touch_y, "touch")
+    visualize_windows(dsname, X, has_touch_y, "no_touch")
+    np.save("processed/%s_X" % dsname, X)
+    np.save("processed/%s_has_touch_y" % dsname, has_touch_y)
+    np.save("processed/%s_touch_loc_y" % dsname, touch_loc_y)
+
+    # Balance classes
+    X_balanced, has_touch_y_balanced = balance_classes(X, has_touch_y)
+
+    visualize_windows("balanced_%s" % dsname, X_balanced, has_touch_y_balanced, "touch")
+    visualize_windows("balanced_%s" % dsname, X_balanced, has_touch_y_balanced, "no_touch")
+    np.save("processed/balanced_%s_X" % dsname, X_balanced)
+    np.save("processed/balanced_%s_has_touch_y" % dsname, has_touch_y_balanced)
 
 if __name__ == "__main__":
     main()
