@@ -26,8 +26,5 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.jasoncompany.sillyappname"
     },
-    "android": {
-      "bundleIdentifier": "com.jasoncompany.sillyappname"
-    }
   }
 }
