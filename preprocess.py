@@ -59,7 +59,7 @@ def interp_xyz(interp_times, data_times, data):
 def preprocess_sensor_data(csvf):
     """Filters into acc/gyro, interpolates data according to `samples_per_window`, and returns data in windows.
     Returns:
-        all_data: np array (n, samples_per_window * 6). For each sample, (acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z).
+        all_data: np array (num_samples, 6). For each sample, (acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z).
     """
     start_time = int(csvf[0][3])
 

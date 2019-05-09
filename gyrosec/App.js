@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableWithoutFeedback, Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, TouchableWithoutFeedback, Image, StyleSheet, Text, View } from 'react-native';
 import { Gyroscope, Accelerometer } from 'expo';
 
 export default class App extends React.Component {
@@ -10,7 +10,7 @@ export default class App extends React.Component {
       accData: {},
       wsReady: false,
     };
-    this.ws = new WebSocket("ws://52538153.ngrok.io");
+    this.ws = new WebSocket("ws://9a4740af.ngrok.io");
 
     this.ws.onopen = () => {
       console.log("Websocket open!");
@@ -19,6 +19,9 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
+    console.log("Width: ", Dimensions.get('window').width);
+    console.log("Height: ", Dimensions.get('window').height);
+
     Gyroscope.setUpdateInterval(16);
     Gyroscope.addListener(result => {
       this.setState({ gyroscopeData: result });

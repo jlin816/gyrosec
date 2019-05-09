@@ -6,10 +6,12 @@ import numpy as np
 import json
 import csv
 from collections import deque
+from keras.models import load_model
 
 import signal
 import sys
 
+from preprocess import preprocess_sensor_data
 
 windowWidth = 500
 
@@ -83,14 +85,14 @@ async def predict_given_touch(websocket, path):
     collecting_press_data = False
     press_start_time = -1
     press_data = []
+    press_true_loc = []
     
     while True:
         data = await websocket.recv()
         dataObj = json.loads(data)
         # Remove old samples before the last 100ms
-        if len(last_100ms) > 0: 
-            while last_100ms[0]["time"] < dataObj["time"] - 100:
-                last_100ms.popleft()
+        while len(last_100ms) > 0 and last_100ms[0]["time"] < dataObj["time"] - 100:
+            last_100ms.popleft()
         # Add new samples
         last_100ms.append(dataObj)
 
@@ -99,22 +101,54 @@ async def predict_given_touch(websocket, path):
             assert(not collecting_press_data)
             collecting_press_data = True
             press_start_time = dataObj["time"]
+            press_true_loc = [dataObj["locationX"], dataObj["locationY"]]
+            print("Detected a press at time ", press_start_time)
             press_data = list(last_100ms) 
         if collecting_press_data:
             if dataObj["time"] > press_start_time + 100:
-                predict_touch_loc(press_data, press_start_time)
+                print("Stopping press window at time ", dataObj["time"])
+                predict_touch_loc(press_data, press_start_time, press_true_loc)
                 collecting_press_data = False
                 press_start_time = -1
                 press_data = []
+                press_true_loc = []
             else:
                 press_data.append(dataObj)
 
-def predict_touch_loc(press_data, press_start_time):
-    print(press_start_time)
-    print(press_data[0])
-    print(press_data[-1])
-    # Preprocess data then feed into NN
-    pass
+def predict_touch_loc(press_window_data, press_start_time, true_loc):
+    """Given a 200ms window centered on a press event, predict the location."""
+    print("Predicting location...")
+
+    press_window_data = [[
+            "-2", "-2", # dummy location, will be filtered in preprocessing
+            d["event"],
+            d["time"],
+            d["data"]["x"],
+            d["data"]["y"],
+            d["data"]["z"]
+        ] for d in press_window_data if d["event"] in ["accelerometer", "gyroscope"]]
+
+    sensor_data, num_windows = preprocess_sensor_data(press_window_data) 
+    assert(num_windows == 1)
+
+    sensor_stats = np.load("processed/spacedout1-2_min_range.npy")
+    sensor_mins = sensor_stats[0]
+    sensor_ranges = sensor_stats[1]
+    print("Normalizing...")
+    print("Min: ", sensor_mins)
+    print("Range: ", sensor_ranges)
+
+    # Normalize data according to each sensor
+    sensor_data = (sensor_data - sensor_mins) / sensor_ranges
+    sensor_data = sensor_data.reshape(-1, 120)
+
+    print("Loading model...")
+    model = load_model("touch_loc_model.h5")
+    print("Predicting...")
+    predicted_loc = model.predict(sensor_data)
+    print(predicted_loc)
+    print(true_loc)
+
     
 if __name__ == "__main__":
     mode = sys.argv[1] # "visualize", "collect_data", "predict_given_touch"
