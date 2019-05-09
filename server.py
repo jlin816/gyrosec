@@ -146,7 +146,7 @@ def predict_touch_loc(press_window_data, press_start_time, true_loc):
     model = load_model("touch_loc_model.h5")
     print("Predicting...")
     predicted_loc = model.predict(sensor_data)
-    print(predicted_loc)
+    print("Prediction (according to Jason's screen dims): ", [predicted_loc[0] * 411.43, predicted_loc[1] * 774.857])
     print(true_loc)
 
     
