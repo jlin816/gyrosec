@@ -64,6 +64,8 @@
 	<string>Allow Gyrosec to use your camera</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Allow Gyrosec to access your contacts</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Please let us use your locations forever</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Allow Gyrosec to use your location</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -76,6 +78,12 @@
 	<string>Give Gyrosec permission to access your photos</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Allow Gyrosec to access your reminders</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
