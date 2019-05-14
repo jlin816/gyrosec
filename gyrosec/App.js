@@ -10,15 +10,22 @@ export default class App extends React.Component {
       accData: {},
       wsReady: false,
     };
-    this.ws = new WebSocket("ws://9a4740af.ngrok.io");
+  }
+
+  componentDidMount() {
+    this.ws = new WebSocket("wss://7da67621.ngrok.io");
+    console.log("Websocket initialized...");
 
     this.ws.onopen = () => {
       console.log("Websocket open!");
       this.setState({ wsReady: true });
+      this.ws.send(JSON.stringify({
+        "event": "info",
+        "width": Dimensions.get('window').width,
+        "height": Dimensions.get('window').height  
+      }));
+      console.log("Sent info");
     }
-  }
-
-  componentDidMount() {
     console.log("Width: ", Dimensions.get('window').width);
     console.log("Height: ", Dimensions.get('window').height);
 
