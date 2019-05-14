@@ -1,10 +1,8 @@
 import csv
 import math
 import numpy as np
-import matplotlib
-matplotlib.use("agg")
-import matplotlib.pyplot as plt
 import sys
+from visualize import *
 
 window_size_ms = 200.
 samples_per_window = 20
@@ -47,7 +45,12 @@ def interp_xyz(interp_times, data_times, data):
         (T, 3) interpolated (x,y,z) sensor data
     """ 
     assert(len(data_times) == len(data))
-    # Check sampled times are increasing
+    # Remove duplicate readings for the same time (diff = 0)
+    dup_times = (np.diff(data_times) == 0).nonzero()
+    data_times = np.delete(data_times, dup_times, axis=0)
+    data = np.delete(data, dup_times, axis=0)
+
+    # Make sure sampled times are strictly increasing now
     assert(np.all(np.diff(data_times) > 0))
     data_interp = [
         np.interp(interp_times, data_times, data[:,0]),
@@ -76,9 +79,9 @@ def preprocess_sensor_data(csvf):
     end_time = max(acc_data[-1][0], gyro_data[-1][0])
     num_windows = math.ceil((end_time / window_size_ms))
     num_samples = num_windows * samples_per_window
-    print("Total time: ", end_time)
-    print("Num windows:", num_windows)
-    print("Num samples: ", num_samples)
+    #print("Total time: ", end_time)
+    #print("Num windows:", num_windows)
+    #print("Num samples: ", num_samples)
 
     # Interpolate
     interp_times = np.linspace(0, end_time, num=num_samples)
@@ -88,7 +91,7 @@ def preprocess_sensor_data(csvf):
     all_data = np.concatenate((acc_data_interp, gyro_data_interp), axis=0).T
     assert(all_data.shape == (num_samples, 6))
 
-    print("Done.")
+    #print("Done.")
     return all_data, num_windows
 
 def preprocess_presses(csvf, num_windows):
@@ -111,60 +114,6 @@ def preprocess_presses(csvf, num_windows):
     print("Number no touch windows", np.sum(has_touch == 0))
 
     return has_touch, touch_loc
-
-def visualize_with_presses(csvf, xyz_data, num_samples_to_view = 1500):
-    """Visualizes sensor data with presses highlighted.
-    Args:
-        csvf: csvf file to filter `press` events from
-        xyz_data: (# samples, 4) sensor data. First column is time (ms since start).
-    """
-
-    plt.figure(figsize=(20,5))
-
-    plot_end_time = xyz_data[num_samples_to_view - 1][0]
-    t_ms = xyz_data[:num_samples_to_view, 0]
-    plt.plot(t_ms, xyz_data[:num_samples_to_view, 1], marker="o")
-    plt.plot(t_ms, xyz_data[:num_samples_to_view, 2])
-    plt.plot(t_ms, xyz_data[:num_samples_to_view, 3])
-
-    presses = [int(x[3]) - start_time for x in csvf if x[2] == "press" if int(x[3]) - start_time < plot_end_time]
-    releases = [int(x[3]) - start_time for x in csvf if x[2] == "release" if int(x[3]) - start_time < plot_end_time]
-
-    presses = presses[:min(len(presses), len(releases))]
-
-    for i in range(len(presses)):
-        plt.axvspan(presses[i], releases[i], alpha=0.3, color="r")
-        
-    plt.xticks(np.arange(0, plot_end_time, step=window_size_ms))
-    plt.show()
-
-def visualize_windows(dataset, sensor_data_x, has_touch_y, window_type, nrows=5, ncols=5):
-    """Visualize touch / no touch windows separately.
-    Args:
-        sensor_data_x: (# windows, samples_per_window * 6) np array of sensor data
-        has_touch_y: (# windows,) np array of 1 (touch) or 0 (no touch) for each window
-        window_type: "touch" or "no_touch" which windows to visualize
-    """
-    sensor_data_x = sensor_data_x.reshape((-1, samples_per_window, 6))
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(15, 15))
-    axes = axes.reshape(-1)
-    window_type_val = 1 if window_type == "touch" else 0
-
-    count = 0
-    for i in range(50, len(has_touch_y)):
-        if has_touch_y[i] == window_type_val:
-            if count == nrows * ncols: break
-            axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,0])
-            axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,1])
-            axes[count].plot(np.linspace(0, window_size_ms, num=samples_per_window), sensor_data_x[i,:,2])
-            axes[count].set_ylim(0, 1)
-            count += 1
-            
-    fig.suptitle(dataset + ": " + window_type)
-    fname = "figs/{}_{}.png".format(window_type, dataset) 
-    print("Saving figure to ", fname)
-    plt.savefig(fname) 
 
 def save(sensor_data, has_touch, touch_loc, dataset):
     print("Saving...")
@@ -208,6 +157,7 @@ def balance_classes(X, has_touch_y):
     X_with_touch = X[has_touch_y == 1]
     print(X_with_touch.shape)
     print(has_touch_y == 0)
+
     X_no_touch = X[has_touch_y == 0][:len(X_with_touch)]
 
     has_touch_y_with_touch = has_touch_y[has_touch_y == 1]
@@ -222,9 +172,9 @@ def balance_classes(X, has_touch_y):
     return X_balanced, has_touch_y_balanced
 
 def main():
-    dsname = "spacedout1-2"
-    all_datasets = ["dataPixelRHandStandingRandomShortPressesSpacedOut2",
-            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
+    dsname = "jessyiPhone"
+    all_datasets = ["jessyiPhone"]
+#            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
 
     X = []
     has_touch_y = []

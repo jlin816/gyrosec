@@ -14,10 +14,10 @@ import sys
 
 from preprocess import preprocess_sensor_data
 
-window_width = 500
-has_touch_model = load_model("has_touch_model.h5")
-loc_model = load_model("touch_loc_model.h5")
-sensor_stats = np.load("processed/spacedout1-2_min_range.npy")
+window_width = 500 # for plotting
+has_touch_model = load_model("has_touch_model_cnn.h5")
+loc_model = load_model("touch_loc_model_cnn.h5")
+sensor_stats = np.load("processed/jessyiPhone_min_range.npy")
 sensor_mins = sensor_stats[0]
 sensor_ranges = sensor_stats[1]
 #print("Normalizing...")
@@ -178,12 +178,12 @@ async def predict(websocket, path):
             acc_curve.setData(acc_plot_data)
             acc_curve.setPos(ptr, 0)
             QtGui.QApplication.processEvents()
+        """
         if data_obj["event"] == "press":
             print("Press detected at time %d, loc (%.2f, %.2f)" % (data_obj["time"], data_obj["locationX"], data_obj["locationY"]))
             pos = [{"pos": [float(data_obj["locationX"]), float(data_obj["locationY"])]}]
             touch_scatter.setData(pos)
             QtGui.QApplication.processEvents()
-        """
 
         # Collect samples for the next prediction window
         if data_obj["time"] < last_window_end_t + 100:
@@ -199,6 +199,8 @@ async def predict(websocket, path):
             continue
         
         # Predict
+        assert(len(next_100ms) > 0)
+        assert(len(last_100ms) > 0)
         has_touch, pred_loc_normalized = predict_loc_if_has_touch(last_100ms + next_100ms)
 
         if has_touch != -1:
@@ -208,6 +210,7 @@ async def predict(websocket, path):
             pred_locs.append(pred_loc)
             pos = [{"pos": pred_loc}]
             pred_scatter.setData(pos)
+            QtGui.QApplication.processEvents()
             print("Predicted loc: ", pred_loc)
 
         if len(next_100ms) == 0:
@@ -226,16 +229,15 @@ def predict_loc_if_has_touch(window):
     window_data = json_evts_to_arr(window)
     sensor_data, num_windows = preprocess_sensor_data(window_data)
     assert(num_windows == 1)
-    sensor_data = sensor_data.reshape(-1, 120)
-    has_touch = has_touch_model.predict(sensor_data)[0]
-#    print(has_touch)
-    if has_touch < 0.5:
-        return -1, -1
 
     # Normalize data according to each sensor
     sensor_data = sensor_data.reshape(-1, 20, 6)
     sensor_data = (sensor_data - sensor_mins) / sensor_ranges
-    sensor_data = sensor_data.reshape(-1, 120)
+
+    has_touch = has_touch_model.predict(sensor_data)[0]
+    print(has_touch)
+    if has_touch < 0.75:
+        return -1, -1
 
     predicted_loc_normalized = loc_model.predict(sensor_data)[0]
     return has_touch, predicted_loc_normalized
