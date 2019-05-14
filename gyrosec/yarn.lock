@@ -771,6 +771,11 @@
   version "0.0.27"
   resolved "https://registry.yarnpkg.com/@types/websql/-/websql-0.0.27.tgz#621a666a7f02018e7cbb4abab956a25736c27d71"
 
+"@voximplant/react-native-foreground-service@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@voximplant/react-native-foreground-service/-/react-native-foreground-service-1.1.0.tgz#006d09cf5546ebfc56bddf69825237fed323f2dd"
+  integrity sha512-mFerv1oEJPyzFO2jwqHs8cRFCf4t1jlQExdd46q15gKBEovjgp9JlY9TQ/VzHGxNCneJ4X/ypIh/C1qV28K8TA==
+
 abbrev@1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.1.tgz#f8f2c887ad10bf67f634f005b6987fed3179aac8"

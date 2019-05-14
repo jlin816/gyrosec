@@ -7,6 +7,7 @@
     "eject": "expo eject"
   },
   "dependencies": {
+    "@voximplant/react-native-foreground-service": "^1.1.0",
     "expo": "^32.0.0",
     "expokit": "32.1.1",
     "react": "16.5.0",

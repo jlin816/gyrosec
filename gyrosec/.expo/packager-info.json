@@ -2,8 +2,8 @@
   "devToolsPort": 19002,
   "expoServerPort": 19000,
   "packagerPort": 19001,
-  "packagerPid": 78060,
+  "packagerPid": 51090,
   "expoServerNgrokUrl": "https://n8-3up.feedgoodhealth.gyrosec.exp.direct",
   "packagerNgrokUrl": "https://packager.n8-3up.feedgoodhealth.gyrosec.exp.direct",
-  "ngrokPid": 78080
+  "ngrokPid": 51111
 }
