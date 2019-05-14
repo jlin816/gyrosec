@@ -7,6 +7,7 @@ import json
 import csv
 from collections import deque
 from keras.models import load_model
+import time
 
 import signal
 import sys
@@ -132,10 +133,13 @@ async def predict(websocket, path):
     # Create an empty plot
     acc_curve = acc_plot.plot()
     got_info = False
+    pred_locs = []
 
     while True:
         data = await websocket.recv()
         data_obj = json.loads(data)
+        if len(next_100ms) == 0:
+            start_time = time.time()
 
         if data_obj["event"] == "info":
             print("Got info")
@@ -167,6 +171,7 @@ async def predict(websocket, path):
             continue
 
         # Update plots
+        """
         if data_obj["event"] == "accelerometer":
             acc_plot_data.append(float(data_obj["data"]["x"]))
             ptr += 1
@@ -178,6 +183,7 @@ async def predict(websocket, path):
             pos = [{"pos": [float(data_obj["locationX"]), float(data_obj["locationY"])]}]
             touch_scatter.setData(pos)
             QtGui.QApplication.processEvents()
+        """
 
         # Collect samples for the next prediction window
         if data_obj["time"] < last_window_end_t + 100:
@@ -194,10 +200,12 @@ async def predict(websocket, path):
         
         # Predict
         has_touch, pred_loc_normalized = predict_loc_if_has_touch(last_100ms + next_100ms)
+
         if has_touch != -1:
             print("PREDICTION: prob %.2f press between %d-%d" % (has_touch, last_100ms[0]["time"], next_100ms[-1]["time"]))
 
             pred_loc = [pred_loc_normalized[0] * device_w, pred_loc_normalized[1] * device_h]
+            pred_locs.append(pred_loc)
             pos = [{"pos": pred_loc}]
             pred_scatter.setData(pos)
             print("Predicted loc: ", pred_loc)
@@ -220,6 +228,7 @@ def predict_loc_if_has_touch(window):
     assert(num_windows == 1)
     sensor_data = sensor_data.reshape(-1, 120)
     has_touch = has_touch_model.predict(sensor_data)[0]
+#    print(has_touch)
     if has_touch < 0.5:
         return -1, -1
 
