@@ -15,9 +15,9 @@ import sys
 from preprocess import preprocess_sensor_data
 
 window_width = 500 # for plotting
-has_touch_model = load_model("has_touch_model_cnn.h5")
-loc_model = load_model("touch_loc_model_cnn.h5")
-sensor_stats = np.load("processed/jessyiPhone_min_range.npy")
+has_touch_model = load_model("has_touch_model_cnn1-3.h5")
+loc_model = load_model("touch_loc_model_cnn1-3.h5")
+sensor_stats = np.load("processed/jessyiPhone1-3_min_range.npy")
 sensor_mins = sensor_stats[0]
 sensor_ranges = sensor_stats[1]
 #print("Normalizing...")
@@ -133,7 +133,7 @@ async def predict(websocket, path):
     # Create an empty plot
     acc_curve = acc_plot.plot()
     got_info = False
-    pred_locs = []
+    real_presses = deque()
 
     while True:
         data = await websocket.recv()
@@ -181,9 +181,13 @@ async def predict(websocket, path):
         """
         if data_obj["event"] == "press":
             print("Press detected at time %d, loc (%.2f, %.2f)" % (data_obj["time"], data_obj["locationX"], data_obj["locationY"]))
+            real_presses.append({
+                "time": int(data_obj["time"]),
+                "loc": [float(data_obj["locationX"]), float(data_obj["locationY"])]
+            })
             pos = [{"pos": [float(data_obj["locationX"]), float(data_obj["locationY"])]}]
-            touch_scatter.setData(pos)
-            QtGui.QApplication.processEvents()
+#            touch_scatter.setData(pos)
+#            QtGui.QApplication.processEvents()
 
         # Collect samples for the next prediction window
         if data_obj["time"] < last_window_end_t + 100:
@@ -207,10 +211,27 @@ async def predict(websocket, path):
             print("PREDICTION: prob %.2f press between %d-%d" % (has_touch, last_100ms[0]["time"], next_100ms[-1]["time"]))
 
             pred_loc = [pred_loc_normalized[0] * device_w, pred_loc_normalized[1] * device_h]
-            pred_locs.append(pred_loc)
             pos = [{"pos": pred_loc}]
             pred_scatter.setData(pos)
+
+            # Check if there's a real press at that time
+            window_start_time = int(last_100ms[0]["time"])
+            # Missed presses before window
+            while len(real_presses) > 0 and real_presses[0]["time"] < window_start_time:
+                #print("Press not detected at time ", real_presses[0]["time"])
+                real_presses.popleft()
+
+            # Passed window
+            if len(real_presses) == 0 or real_presses[0]["time"] > next_100ms[-1]["time"]:
+                pass
+                #print("False positive")
+            else:
+                print("Real press %d ms into window" % (real_presses[0]["time"] - window_start_time))
+                touch_scatter.setData([{"pos": real_presses[0]["loc"]}])
+                real_presses.popleft()
+
             QtGui.QApplication.processEvents()
+
             print("Predicted loc: ", pred_loc)
 
         if len(next_100ms) == 0:
