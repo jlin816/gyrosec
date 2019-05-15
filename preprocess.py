@@ -158,10 +158,16 @@ def balance_classes(X, has_touch_y):
     print(X_with_touch.shape)
     print(has_touch_y == 0)
 
-    X_no_touch = X[has_touch_y == 0][:len(X_with_touch)]
+    select_indices = np.random.choice(np.sum(has_touch_y == 0), np.sum(has_touch_y == 1), replace=False)
+    print(len(select_indices))
+    print(select_indices)
+
+#    X_no_touch = X[has_touch_y == 0][:len(X_with_touch)]
+    X_no_touch = X[has_touch_y == 0][select_indices]
 
     has_touch_y_with_touch = has_touch_y[has_touch_y == 1]
-    has_touch_y_no_touch = has_touch_y[has_touch_y == 0][:len(X_with_touch)]
+#    has_touch_y_no_touch = has_touch_y[has_touch_y == 0][:len(X_with_touch)]
+    has_touch_y_no_touch = has_touch_y[has_touch_y == 0][select_indices]
 
     X_balanced = np.concatenate([X_with_touch, X_no_touch])
     has_touch_y_balanced = np.concatenate([has_touch_y_with_touch, has_touch_y_no_touch])
@@ -172,8 +178,8 @@ def balance_classes(X, has_touch_y):
     return X_balanced, has_touch_y_balanced
 
 def main():
-    dsname = "jessyiPhone"
-    all_datasets = ["jessyiPhone"]
+    dsname = "jessyiPhone1-3"
+    all_datasets = ["jessyiPhone", "jessyiPhone2", "jessyiPhone3"]
 #            "dataPixelRHandStandingRandomShortPressesSpacedOut"]
 
     X = []
