@@ -138,6 +138,7 @@ async def predict(websocket, path):
     while True:
         data = await websocket.recv()
         data_obj = json.loads(data)
+        print(data_obj)
         if len(next_100ms) == 0:
             start_time = time.time()
 
@@ -203,6 +204,13 @@ async def predict(websocket, path):
             continue
         
         # Predict
+        # If no data sent for 100ms, reset
+        if len(next_100ms) == 0:
+            last_100ms = []
+            last_window_end_t = -1
+            next_100ms = []
+            continue
+           
         assert(len(next_100ms) > 0)
         assert(len(last_100ms) > 0)
         has_touch, pred_loc_normalized = predict_loc_if_has_touch(last_100ms + next_100ms)
