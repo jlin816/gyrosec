@@ -43,7 +43,7 @@ PyQt5-sip==4.19.15
 pyqtgraph==0.10.0
 pyrsistent==0.15.1
 python-dateutil==2.8.0
-PyYAML==5.1
+PyYAML==5.4
 pyzmq==18.0.1
 qtconsole==4.4.4
 scipy==1.2.1
